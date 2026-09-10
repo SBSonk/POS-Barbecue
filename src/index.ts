@@ -41,8 +41,8 @@ async function startServer() {
     await initDatabase();
     await seedInitialProducts();
 
-    // 2. Start Express Server on 0.0.0.0 (all network interfaces for local Wi-Fi)
-    const server = app.listen(PORT, '0.0.0.0', () => {
+    // 2. Start Express Server
+    const server = app.listen(PORT, () => {
       const ips = getLocalIpAddresses();
 
       console.log('\n' + '='.repeat(60));
@@ -50,7 +50,7 @@ async function startServer() {
       console.log('='.repeat(60));
       console.log(` ✅ Server successfully running on PORT ${PORT}!`);
       console.log('\n 📱 HOW TO ACCESS FROM DEVICES ON SAME WI-FI NETWORK:');
-      console.log(`    💻 Laptop Browser:  http://localhost:${PORT}`);
+      console.log(`    💻 Laptop Browser:  http://localhost:${PORT}  (or http://127.0.0.1:${PORT})`);
       if (ips.length > 0) {
         ips.forEach(ip => {
           console.log(`    📲 Mobile / Tablet: http://${ip}:${PORT}`);
