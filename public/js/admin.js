@@ -518,12 +518,12 @@ const Admin = {
                   <tr>
                     <td style="color: var(--text-muted); font-size: 0.8rem;">${l.created_at}</td>
                     <td><strong>${l.product_name}</strong></td>
-                    <td style="font-weight: bold; color: ${l.change_amount > 0 ? '#2b8a3e' : '#c92a2a'};">
+                    <td style="font-weight: bold; color: ${l.change_amount > 0 ? 'var(--success)' : 'var(--danger)'};">
                       ${l.change_amount > 0 ? `+${l.change_amount}` : l.change_amount}
                     </td>
                     <td>${l.resulting_stock}</td>
                     <td><span style="font-size: 0.75rem; background: rgba(128, 128, 128, 0.1); padding: 2px 6px; border-radius: 4px; font-weight: 600;">${l.reason}</span></td>
-                    <td style="font-size: 0.8rem; color: #495057;">${l.notes || '-'}</td>
+                    <td style="font-size: 0.8rem; color: var(--text-muted);">${l.notes || '-'}</td>
                   </tr>
                 `).join('')}
               </tbody>
