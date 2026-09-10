@@ -1,0 +1,406 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>BBQ & Drinks POS System</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍖</text></svg>">
+</head>
+<body>
+
+  <!-- Top App Navigation Header -->
+  <header class="app-header">
+    <div class="brand-container">
+      <span class="brand-logo">🍖</span>
+      <div>
+        <div class="brand-title" id="brand-title">Smokin' BBQ & Brews</div>
+        <div class="network-badge" id="server-ip-badge" title="Local Wi-Fi Server Address">
+          <span class="dot"></span> Connecting...
+        </div>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <button class="nav-btn active" id="nav-pos-btn">
+        <span>🛒</span> Cashier
+      </button>
+      <button class="nav-btn" id="nav-pending-btn">
+        <span>🕒</span> Pending Orders <span class="nav-badge" id="pending-nav-badge" style="display: none;">0</span>
+      </button>
+      <button class="nav-btn" id="nav-admin-btn">
+        <span>⚙️</span> Admin
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="main-wrapper">
+
+    <!-- 1. CASHIER INTERFACE -->
+    <div class="pos-layout" id="pos-layout">
+      <!-- Left: Products Catalog & Filter -->
+      <section class="pos-products-panel">
+        <!-- Horizontal Scrollable Category Bar -->
+        <nav class="category-nav" id="category-nav">
+          <!-- Dynamic Category Pills -->
+        </nav>
+
+        <!-- Search Bar -->
+        <div class="search-container">
+          <input type="text" id="product-search" class="search-input" placeholder="🔍 Search BBQ, drinks, sides..." autocomplete="off">
+        </div>
+
+        <!-- Touch Product Grid -->
+        <div class="products-grid-scroll">
+          <div class="products-grid" id="products-grid">
+            <!-- Dynamic Product Cards -->
+          </div>
+        </div>
+      </section>
+
+      <!-- Right: Cart & Checkout Sidebar (Desktop) / Slide Drawer (Mobile) -->
+      <aside class="pos-cart-panel" id="pos-cart-panel">
+        <div class="cart-header">
+          <div class="cart-header-left">
+            <button class="cart-back-btn" id="cart-back-btn" title="Back to Main Menu" type="button">
+              <span class="back-arrow">←</span>
+              <span class="back-text">Menu</span>
+            </button>
+            <div class="cart-title">
+              <span>🛒 Current Order</span>
+              <span class="cart-badge" id="cart-badge">0 items</span>
+            </div>
+          </div>
+          <div class="cart-header-actions">
+            <button class="clear-cart-btn" id="clear-cart-btn" title="Clear All Items" type="button">Clear</button>
+            <button class="close-cart-btn" id="close-cart-drawer-btn" title="Close Order View" type="button">✕</button>
+          </div>
+        </div>
+
+        <!-- Cart Line Items List -->
+        <div class="cart-items-list" id="cart-items-list">
+          <!-- Dynamic Cart Items -->
+        </div>
+
+        <!-- Cart Totals & Checkout Trigger -->
+        <div class="cart-footer">
+          <div class="cart-summary-row">
+            <span>Subtotal</span>
+            <span id="cart-subtotal">$0.00</span>
+          </div>
+          <div class="cart-summary-row" id="tax-row" style="display: none;">
+            <span>Tax</span>
+            <span id="cart-tax">$0.00</span>
+          </div>
+          <div class="cart-total-row">
+            <span>Total</span>
+            <span id="cart-total">$0.00</span>
+          </div>
+
+          <div class="cart-footer-actions">
+            <button class="checkout-btn" id="checkout-btn" disabled>
+              <span>💳</span> Pay $0.00
+            </button>
+            <button class="cart-continue-btn" id="cart-continue-btn" type="button">
+              <span>←</span> Add More Items / Back to Menu
+            </button>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <!-- 2. PENDING ORDERS INTERFACE (KITCHEN & SERVING QUEUE) -->
+    <div class="pending-layout" id="pending-layout" style="display: none;">
+      <div class="pending-header-card">
+        <div>
+          <div class="pending-header-title">🕒 Active Pending Orders</div>
+          <p class="pending-header-sub">Kitchen & bar queue — review incoming orders and mark them complete when served.</p>
+        </div>
+        <div class="pending-header-actions">
+          <span class="pending-count-pill" id="pending-count-pill">0 Pending</span>
+          <button class="btn btn-secondary" id="refresh-pending-btn" type="button">🔄 Refresh</button>
+        </div>
+      </div>
+
+      <!-- Filter Tabs & Search -->
+      <div class="pending-controls">
+        <div class="pending-filter-tabs" id="pending-filter-tabs">
+          <button class="pending-tab-btn active" data-filter="ALL" type="button">All Active</button>
+          <button class="pending-tab-btn" data-filter="FOOD" type="button">🍖 Food Only</button>
+          <button class="pending-tab-btn" data-filter="DRINKS" type="button">🍹 Drinks Only</button>
+        </div>
+        <div class="pending-search-container">
+          <input type="text" id="pending-search-input" class="search-input" placeholder="🔍 Search receipt #, note, or item..." autocomplete="off">
+        </div>
+      </div>
+
+      <!-- Pending Orders Cards Grid -->
+      <div class="pending-orders-grid" id="pending-orders-grid">
+        <!-- Dynamic Pending Order Cards -->
+      </div>
+    </div>
+
+    <!-- 3. ADMIN DASHBOARD (PIN PROTECTED) -->
+    <div class="admin-layout" id="admin-layout" style="display: none;">
+      <!-- Admin Sub Navigation Tabs -->
+      <nav class="admin-nav-tabs">
+        <button class="admin-tab-btn active" data-tab="products">🍗 Menu & Products</button>
+        <button class="admin-tab-btn" data-tab="inventory">📦 Quick Restock</button>
+        <button class="admin-tab-btn" data-tab="transactions">🧾 Orders & Void</button>
+        <button class="admin-tab-btn" data-tab="reports">📊 End of Day</button>
+        <button class="admin-tab-btn" data-tab="settings">⚙️ Settings</button>
+      </nav>
+
+      <!-- Dynamic Admin Tab Content -->
+      <div class="admin-content-area" id="admin-tab-content">
+        <!-- Rendered by admin.js -->
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Mobile Floating Sticky Cart Bar (Shown on small screens when cart has items) -->
+  <div class="mobile-cart-bar" id="mobile-cart-bar">
+    <div class="mobile-cart-content">
+      <div class="mobile-cart-left">
+        <span class="mobile-cart-count" id="mobile-cart-count">0 Items</span>
+        <span class="mobile-cart-total" id="mobile-cart-total">$0.00</span>
+      </div>
+      <div class="mobile-checkout-action">
+        View Order ➔
+      </div>
+    </div>
+  </div>
+
+  <!-- MODALS -->
+
+  <!-- A. PAYMENT & CASH REGISTER MODAL -->
+  <div class="modal-backdrop hidden" id="payment-modal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div class="modal-title">💵 Payment & Checkout</div>
+        <button class="modal-close-btn" onclick="document.getElementById('payment-modal').classList.add('hidden')">×</button>
+      </div>
+      <div class="modal-body">
+        <div style="text-align: center; margin-bottom: 16px;">
+          <div style="font-size: 0.9rem; color: #868e96; font-weight: 600;">AMOUNT DUE</div>
+          <div style="font-size: 2.2rem; font-weight: 800; color: #d9480f;" id="payment-modal-total">$0.00</div>
+        </div>
+
+        <!-- Payment Method Tabs -->
+        <div class="form-label">Payment Method:</div>
+        <div class="payment-methods-grid">
+          <div class="payment-method-card active" data-method="CASH" onclick="Cashier.selectPaymentMethod('CASH')">
+            <div style="font-size: 1.5rem;">💵</div>
+            <div>Cash</div>
+          </div>
+          <div class="payment-method-card" data-method="QRPH" onclick="Cashier.selectPaymentMethod('QRPH')">
+            <div style="font-size: 1.5rem;">🇵🇭</div>
+            <div>QRPH (Philippines)</div>
+          </div>
+        </div>
+
+        <!-- Cash Details & Auto Change Calculator -->
+        <div id="cash-payment-section">
+          <div class="form-group">
+            <label class="form-label">Quick Cash Presets:</label>
+            <div class="quick-cash-presets" id="quick-cash-presets">
+              <!-- Rendered presets -->
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" id="tendered-cash-label">Cash Tendered:</label>
+            <input type="number" step="0.01" min="0" class="form-input" id="tendered-cash-input" placeholder="0.00" />
+          </div>
+
+          <!-- Change Due Visual -->
+          <div class="change-due-box">
+            <div class="change-due-label">CHANGE DUE TO CUSTOMER</div>
+            <div class="change-due-val" id="change-due-val">$0.00</div>
+          </div>
+        </div>
+
+        <!-- QRPH Payment Section (Philippines) -->
+        <div id="qrph-payment-section" style="display: none;">
+          <div class="qrph-card-box">
+            <div class="qrph-header">
+              <div class="qrph-logo-badge">
+                <span class="qrph-flag">🇵🇭</span>
+                <strong>QR Ph</strong>
+                <span class="qrph-subtag">InstaPay / National QR</span>
+              </div>
+              <span class="qrph-active-pill">Scan to Pay</span>
+            </div>
+            
+            <p class="qrph-instruction">
+              Customer scans via <strong>GCash, Maya, ShopeePay, GrabPay, BPI, BDO, UnionBank</strong> or any PH banking app.
+            </p>
+
+            <div class="qrph-qr-visual">
+              <div class="qrph-qr-graphic">
+                <span style="font-size: 2.6rem;">📱</span>
+                <span class="qrph-scan-hint">Scan with GCash/Maya/Bank</span>
+              </div>
+              <div class="qrph-due-details">
+                <span class="qrph-due-label">Exact Amount Due</span>
+                <span class="qrph-due-val" id="qrph-modal-amount">$0.00</span>
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-top: 12px;">
+              <label class="form-label">Reference / Approval Code (Optional):</label>
+              <input type="text" class="form-input" id="qrph-ref-input" placeholder="e.g. GCash Ref # or Last 6 Digits" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Optional Order / Table Note -->
+        <div class="form-group" style="margin-top: 14px;">
+          <label class="form-label">Order / Table Note (Optional):</label>
+          <input type="text" class="form-input" id="cashier-order-note" placeholder="e.g. Table 4, To-Go, Extra Sauce" />
+        </div>
+      </div>
+
+      <div class="modal-footer payment-modal-footer">
+        <button class="btn btn-secondary" onclick="document.getElementById('payment-modal').classList.add('hidden')">Cancel</button>
+        <button class="btn btn-pending-order" id="confirm-pending-btn" type="button" onclick="Cashier.processCheckout('PENDING')">
+          <span>🕒</span> Queue as Pending
+        </button>
+        <button class="btn btn-success" id="confirm-payment-btn" type="button" onclick="Cashier.processCheckout('COMPLETED')">
+          <span>✅</span> Pay & Complete
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- B. DIGITAL RECEIPT MODAL -->
+  <div class="modal-backdrop hidden" id="receipt-modal">
+    <div class="modal-box" style="max-width: 420px;">
+      <div class="modal-header">
+        <div class="modal-title">🧾 Digital Receipt</div>
+        <button class="modal-close-btn" onclick="document.getElementById('receipt-modal').classList.add('hidden')">×</button>
+      </div>
+      <div class="modal-body" id="receipt-content">
+        <!-- Rendered receipt paper -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="window.print()">🖨️ Print</button>
+        <button class="btn btn-primary" onclick="document.getElementById('receipt-modal').classList.add('hidden'); Cashier.closeCartDrawer();">✨ New Order</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- C. ADMIN PIN KEYPAD MODAL -->
+  <div class="modal-backdrop hidden" id="pin-modal">
+    <div class="modal-box" style="max-width: 360px;">
+      <div class="modal-header">
+        <div class="modal-title">🔒 Enter Admin PIN</div>
+        <button class="modal-close-btn" onclick="Admin.closePinModal()">×</button>
+      </div>
+      <div class="modal-body" style="text-align: center;">
+        <p style="color: #868e96; font-size: 0.9rem;">Default PIN: <strong>1234</strong></p>
+
+        <!-- PIN Dots Display -->
+        <div class="pin-display">
+          <div class="pin-dot"></div>
+          <div class="pin-dot"></div>
+          <div class="pin-dot"></div>
+          <div class="pin-dot"></div>
+        </div>
+
+        <div id="pin-error-msg" style="color: #c92a2a; font-size: 0.85rem; font-weight: bold; min-height: 20px; margin-bottom: 10px;"></div>
+
+        <!-- Touch Keypad -->
+        <div class="pin-keypad">
+          <button type="button" class="pin-key" data-val="1">1</button>
+          <button type="button" class="pin-key" data-val="2">2</button>
+          <button type="button" class="pin-key" data-val="3">3</button>
+          <button type="button" class="pin-key" data-val="4">4</button>
+          <button type="button" class="pin-key" data-val="5">5</button>
+          <button type="button" class="pin-key" data-val="6">6</button>
+          <button type="button" class="pin-key" data-val="7">7</button>
+          <button type="button" class="pin-key" data-val="8">8</button>
+          <button type="button" class="pin-key" data-val="9">9</button>
+          <button type="button" class="pin-key key-action" data-val="clear">C</button>
+          <button type="button" class="pin-key" data-val="0">0</button>
+          <button type="button" class="pin-key key-action" data-val="back">⌫</button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="Admin.closePinModal()" style="width: 100%;">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- D. ADD / EDIT PRODUCT MODAL -->
+  <div class="modal-backdrop hidden" id="product-modal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div class="modal-title" id="product-modal-title">Add New Product</div>
+        <button class="modal-close-btn" onclick="Admin.closeProductModal()">×</button>
+      </div>
+      <form id="product-modal-form">
+        <div class="modal-body">
+          <input type="hidden" id="product-id-input" />
+
+          <div class="form-group">
+            <label class="form-label">Product Name *</label>
+            <input type="text" id="product-name-input" class="form-input" placeholder="e.g. Smoked Brisket Plate" required />
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label class="form-label">Category *</label>
+              <input type="text" id="product-category-input" class="form-input" placeholder="e.g. BBQ, Drinks, Sides" required />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" id="product-price-label">Price ($) *</label>
+              <input type="number" step="0.01" min="0" id="product-price-input" class="form-input" placeholder="0.00" required />
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label class="form-label">Initial Stock</label>
+              <input type="number" min="0" id="product-stock-input" class="form-input" value="20" required />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Low Stock Alert Limit</label>
+              <input type="number" min="0" id="product-low-stock-input" class="form-input" value="5" required />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Emoji / Icon</label>
+            <input type="text" id="product-icon-input" class="form-input" placeholder="🍖" value="🍖" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Description (Optional)</label>
+            <textarea id="product-desc-input" class="form-textarea" rows="2" placeholder="Brief ingredients or portion size"></textarea>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="Admin.closeProductModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Product</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="js/api.js"></script>
+  <script src="js/cashier.js"></script>
+  <script src="js/pending.js"></script>
+  <script src="js/admin.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
