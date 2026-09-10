@@ -183,10 +183,10 @@ const Pending = {
             <button class="btn btn-secondary" style="padding: 10px 12px; font-size: 0.9rem;" onclick="Pending.viewReceipt(${order.id})" title="View / Print Receipt">
               🧾 Slip
             </button>
-            <button class="btn btn-secondary" style="padding: 10px 12px; font-size: 0.9rem; color: #e03131;" onclick="Pending.voidOrder(${order.id})" title="Cancel Order">
+            <button class="btn btn-secondary" style="padding: 10px 12px; font-size: 0.9rem; color: #e03131;" onclick="Pending.voidOrder(${order.id}, this)" title="Cancel Order">
               ✕ Cancel
             </button>
-            <button class="btn btn-success pending-complete-btn" onclick="Pending.payAndComplete(${order.id})">
+            <button class="btn btn-primary pending-complete-btn" onclick="Pending.payAndComplete(${order.id})">
               <span>✅</span> Pay & Complete
             </button>
           </div>
@@ -218,12 +218,22 @@ const Pending = {
     }
   },
 
-  async voidOrder(id) {
-    const reason = prompt('Reason for voiding / canceling this pending order:', 'Customer canceled before serving');
-    if (reason === null) return; // Cancelled prompt
+  async voidOrder(id, btnElement) {
+    if (btnElement && btnElement.dataset.confirm !== 'true') {
+      btnElement.dataset.confirm = 'true';
+      const originalHtml = btnElement.innerHTML;
+      btnElement.innerHTML = 'Sure?';
+      setTimeout(() => {
+        if (btnElement) {
+          btnElement.dataset.confirm = 'false';
+          btnElement.innerHTML = originalHtml;
+        }
+      }, 3000);
+      return;
+    }
 
     try {
-      const res = await API.voidTransaction(id, reason || 'Pending order canceled');
+      const res = await API.voidTransaction(id, 'Customer canceled before serving');
       if (res.success) {
         App.showToast('Order canceled and inventory restored', 'info');
         await this.loadPendingOrders();

@@ -206,10 +206,10 @@ const Admin = {
         <div class="admin-card-header" style="flex-wrap: wrap; gap: 12px;">
           <div style="flex: 1; min-width: 250px;">
             <div class="admin-card-title">🍗 Product & Menu Management</div>
-            <p style="color: #868e96; font-size: 0.85rem;">Add, edit items, adjust prices, or configure low stock alert limits.</p>
+            <p style="color: var(--text-muted); font-size: 0.85rem;">Add, edit items, adjust prices, or configure low stock alert limits.</p>
           </div>
           <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-            <select style="padding: 8px 12px; border: 1px solid #ced4da; border-radius: 6px; font-size: 0.9rem;" onchange="Admin.handleProductSort(this.value)">
+            <select style="padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.9rem;" onchange="Admin.handleProductSort(this.value)">
               <option value="category" ${this.productSort === 'category' ? 'selected' : ''}>Sort: Category</option>
               <option value="name_asc" ${this.productSort === 'name_asc' ? 'selected' : ''}>Sort: Name (A-Z)</option>
               <option value="price_asc" ${this.productSort === 'price_asc' ? 'selected' : ''}>Sort: Price (Low to High)</option>
@@ -229,16 +229,16 @@ const Admin = {
                     <span class="admin-product-card-title-icon">${p.icon || '🍖'}</span>
                     <div>
                       <strong>${p.name}</strong>
-                      ${p.description ? `<div style="font-size: 0.75rem; color: #868e96; margin-top: 2px;">${p.description}</div>` : ''}
+                      ${p.description ? `<div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">${p.description}</div>` : ''}
                     </div>
                   </div>
-                  <span style="background: #e9ecef; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">${p.category}</span>
+                  <span style="background: rgba(128, 128, 128, 0.15); padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">${p.category}</span>
                 </div>
                 
                 <div class="admin-product-card-body">
                   <div class="admin-product-card-stat">
                     <span class="admin-product-card-stat-label">Price</span>
-                    <span style="font-weight: 700; color: #d9480f;">${this.currency}${p.price.toFixed(2)}</span>
+                    <span style="font-weight: 700; color: var(--primary);">${this.currency}${p.price.toFixed(2)}</span>
                   </div>
                   <div class="admin-product-card-stat">
                     <span class="admin-product-card-stat-label">Stock</span>
@@ -277,12 +277,17 @@ const Admin = {
     const modal = document.getElementById('product-modal');
     const title = document.getElementById('product-modal-title');
     const form = document.getElementById('product-modal-form');
+    const deleteBtn = document.getElementById('product-delete-btn');
 
     form.reset();
     document.getElementById('product-id-input').value = '';
+    deleteBtn.classList.add('hidden');
+    deleteBtn.dataset.confirm = 'false';
+    deleteBtn.innerHTML = '🗑️ Delete';
 
     if (productId) {
       title.textContent = 'Edit Product';
+      deleteBtn.classList.remove('hidden');
       const prod = this.products.find(p => p.id === productId);
       if (prod) {
         document.getElementById('product-id-input').value = prod.id;
@@ -354,7 +359,7 @@ const Admin = {
   },
 
   async toggleProductStatus(id) {
-    if (confirm('Are you sure you want to disable this product from cashier menu?')) {
+    if (true) {
       try {
         await API.deleteProduct(id);
         App.showToast('Product deactivated', 'success');
@@ -363,6 +368,43 @@ const Admin = {
       } catch (err) {
         App.showToast('Failed to disable product', 'danger');
       }
+    }
+  },
+
+  async deleteProductPermanently() {
+    const id = document.getElementById('product-id-input').value;
+    if (!id) return;
+    
+    const prod = this.products.find(p => p.id == id);
+    if (!prod) return;
+
+    const btn = document.getElementById('product-delete-btn');
+    if (btn.dataset.confirm !== 'true') {
+      btn.dataset.confirm = 'true';
+      btn.innerHTML = '⚠️ Confirm Delete';
+      setTimeout(() => {
+        if (btn) {
+          btn.dataset.confirm = 'false';
+          btn.innerHTML = '🗑️ Delete';
+        }
+      }, 3000);
+      return;
+    }
+
+    try {
+      const res = await API.hardDeleteProduct(id);
+      if (res.success) {
+        App.showToast('Product permanently deleted', 'success');
+        this.closeProductModal();
+        await this.renderProductsTab();
+        if (typeof Cashier !== 'undefined' && Cashier.loadProducts) {
+          Cashier.loadProducts();
+        }
+      } else {
+        App.showToast(res.error || 'Failed to delete product', 'danger');
+      }
+    } catch (err) {
+      App.showToast('Error deleting product', 'danger');
     }
   },
 
@@ -402,13 +444,13 @@ const Admin = {
 
       content.innerHTML = `
         ${lowItems.length > 0 ? `
-          <div class="admin-card" style="border-left: 4px solid #f59f00; background: #fffdf5;">
+          <div class="admin-card" style="border-left: 4px solid #f59f00; background: var(--warning-bg);">
             <div class="admin-card-title" style="color: #e67700; display: flex; align-items: center; gap: 8px;">
               ⚠️ Low Stock Warnings (${lowItems.length} items need attention)
             </div>
             <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;">
               ${lowItems.map(item => `
-                <div style="background: #fff; border: 1px solid #ffd43b; border-radius: 8px; padding: 8px 12px; font-size: 0.9rem;">
+                <div style="background: var(--bg-card); border: 1px solid #ffd43b; border-radius: 8px; padding: 8px 12px; font-size: 0.9rem;">
                   <strong>${item.icon || '🍖'} ${item.name}:</strong> 
                   <span style="color: ${item.stock <= 0 ? 'red' : 'orange'}; font-weight: bold;">
                     ${item.stock <= 0 ? 'OUT OF STOCK' : `${item.stock} left (Limit: ${item.low_stock_threshold})`}
@@ -423,17 +465,17 @@ const Admin = {
           <div class="admin-card-header" style="flex-wrap: wrap; gap: 12px;">
             <div>
               <div class="admin-card-title">📦 Quick Inventory Restock</div>
-              <p style="color: #868e96; font-size: 0.85rem;">Filter by Category, Drinks, Food, or search to fast-increment and adjust stock.</p>
+              <p style="color: var(--text-muted); font-size: 0.85rem;">Filter by Category, Drinks, Food, or search to fast-increment and adjust stock.</p>
             </div>
 
             <!-- Sorting & Search Controls -->
             <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
               <input type="text" id="restock-search-input" placeholder="🔍 Search item..." 
                      value="${this.restockSearch}"
-                     style="padding: 7px 12px; border: 1px solid #ced4da; border-radius: 6px; font-size: 0.85rem;"
+                     style="padding: 7px 12px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.85rem;"
                      oninput="Admin.handleRestockSearch(this.value)" />
 
-              <select id="restock-sort-select" style="padding: 7px 10px; border: 1px solid #ced4da; border-radius: 6px; font-size: 0.85rem; font-weight: 600;" onchange="Admin.handleRestockSort(this.value)">
+              <select id="restock-sort-select" style="padding: 7px 10px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.85rem; font-weight: 600;" onchange="Admin.handleRestockSort(this.value)">
                 <option value="category" ${this.restockSort === 'category' ? 'selected' : ''}>Sort: Category (Food / Drinks)</option>
                 <option value="name_asc" ${this.restockSort === 'name_asc' ? 'selected' : ''}>Sort: Name (A-Z)</option>
                 <option value="stock_asc" ${this.restockSort === 'stock_asc' ? 'selected' : ''}>Sort: Stock (Lowest First)</option>
@@ -474,13 +516,13 @@ const Admin = {
               <tbody>
                 ${logs.map(l => `
                   <tr>
-                    <td style="color: #868e96; font-size: 0.8rem;">${l.created_at}</td>
+                    <td style="color: var(--text-muted); font-size: 0.8rem;">${l.created_at}</td>
                     <td><strong>${l.product_name}</strong></td>
                     <td style="font-weight: bold; color: ${l.change_amount > 0 ? '#2b8a3e' : '#c92a2a'};">
                       ${l.change_amount > 0 ? `+${l.change_amount}` : l.change_amount}
                     </td>
                     <td>${l.resulting_stock}</td>
-                    <td><span style="font-size: 0.75rem; background: #f1f3f5; padding: 2px 6px; border-radius: 4px; font-weight: 600;">${l.reason}</span></td>
+                    <td><span style="font-size: 0.75rem; background: rgba(128, 128, 128, 0.1); padding: 2px 6px; border-radius: 4px; font-weight: 600;">${l.reason}</span></td>
                     <td style="font-size: 0.8rem; color: #495057;">${l.notes || '-'}</td>
                   </tr>
                 `).join('')}
@@ -537,7 +579,7 @@ const Admin = {
     const products = this.getFilteredAndSortedRestockProducts();
     if (products.length === 0) {
       return `
-        <div style="text-align: center; padding: 30px; color: #868e96;">
+        <div style="text-align: center; padding: 30px; color: var(--text-muted);">
           <p>No products found matching category "${this.restockCategory}"</p>
         </div>
       `;
@@ -554,7 +596,7 @@ const Admin = {
                   <strong>${p.name}</strong>
                 </div>
               </div>
-              <span style="background: ${p.category === 'Drinks' || p.category === 'Beverages' ? '#e7f5ff' : '#fff4e6'}; color: ${p.category === 'Drinks' || p.category === 'Beverages' ? '#1971c2' : '#d9480f'}; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700;">
+              <span style="background: transparent; border: 1px solid currentColor; color: ${p.category === 'Drinks' || p.category === 'Beverages' ? '#1971c2' : '#d9480f'}; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700;">
                 ${p.category}
               </span>
             </div>
@@ -578,7 +620,7 @@ const Admin = {
 
             <div class="admin-product-card-actions">
                <div style="display: flex; gap: 6px; align-items: center; width: 100%;">
-                 <input type="number" min="0" value="${p.stock}" id="exact-stock-${p.id}" style="flex: 1; min-width: 60px; padding: 6px 8px; border: 1px solid #ced4da; border-radius: 4px;" />
+                 <input type="number" min="0" value="${p.stock}" id="exact-stock-${p.id}" style="flex: 1; min-width: 60px; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px;" />
                  <button class="btn btn-primary" style="padding: 6px 12px; font-size: 0.85rem;" onclick="Admin.saveExactStock(${p.id})">Set Exact</button>
                </div>
             </div>
@@ -681,11 +723,11 @@ const Admin = {
           <div class="admin-card-header">
             <div>
               <div class="admin-card-title">🧾 Orders, Pending Queue & Voiding</div>
-              <p style="color: #868e96; font-size: 0.85rem;">View all orders, mark pending orders completed, or undo accidental checkouts.</p>
+              <p style="color: var(--text-muted); font-size: 0.85rem;">View all orders, mark pending orders completed, or undo accidental checkouts.</p>
             </div>
             <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-              <input type="date" id="trans-date-filter" value="${dateFilter}" style="padding: 8px 10px; border: 1px solid #ced4da; border-radius: 6px;" onchange="Admin.filterTransactions()" />
-              <select id="trans-status-filter" style="padding: 8px 10px; border: 1px solid #ced4da; border-radius: 6px; font-weight: 600;" onchange="Admin.filterTransactions()">
+              <input type="date" id="trans-date-filter" value="${dateFilter}" style="padding: 8px 10px; border: 1px solid var(--border-color); border-radius: 6px;" onchange="Admin.filterTransactions()" />
+              <select id="trans-status-filter" style="padding: 8px 10px; border: 1px solid var(--border-color); border-radius: 6px; font-weight: 600;" onchange="Admin.filterTransactions()">
                 <option value="ALL" ${statusFilter === 'ALL' ? 'selected' : ''}>All Statuses</option>
                 <option value="PENDING" ${statusFilter === 'PENDING' ? 'selected' : ''}>🕒 Pending Only</option>
                 <option value="COMPLETED" ${statusFilter === 'COMPLETED' ? 'selected' : ''}>✅ Completed Only</option>
@@ -695,7 +737,7 @@ const Admin = {
           </div>
 
           ${transactions.length === 0 ? `
-            <div style="text-align: center; padding: 40px; color: #868e96;">
+            <div style="text-align: center; padding: 40px; color: var(--text-muted);">
               <p>No transactions found for the selected filter.</p>
             </div>
           ` : `
@@ -705,26 +747,26 @@ const Admin = {
                 const isPending = t.status === 'PENDING';
                 const itemsList = (t.items || []).map(i => `${i.quantity}x ${i.product_name}`).join(', ');
 
-                let statusBadge = `<span style="font-size: 0.75rem; padding: 3px 8px; border-radius: 12px; font-weight: bold; background: #ebfbee; color: #2b8a3e;">● COMPLETED</span>`;
+                let statusBadge = `<span style="font-size: 0.75rem; padding: 3px 8px; border-radius: 12px; font-weight: bold; background: var(--success-bg); color: #2b8a3e;">● COMPLETED</span>`;
                 if (isPending) {
-                  statusBadge = `<span style="font-size: 0.75rem; padding: 3px 8px; border-radius: 12px; font-weight: bold; background: #fff9db; color: #f59f00;">🕒 PENDING</span>`;
+                  statusBadge = `<span style="font-size: 0.75rem; padding: 3px 8px; border-radius: 12px; font-weight: bold; background: var(--warning-bg); color: #f59f00;">🕒 PENDING</span>`;
                 } else if (isVoided) {
-                  statusBadge = `<span style="font-size: 0.75rem; padding: 3px 8px; border-radius: 12px; font-weight: bold; background: #ffe3e3; color: #c92a2a;">✕ VOIDED</span>`;
+                  statusBadge = `<span style="font-size: 0.75rem; padding: 3px 8px; border-radius: 12px; font-weight: bold; background: var(--danger-bg); color: #c92a2a;">✕ VOIDED</span>`;
                 }
 
                 const payBadge = t.payment_method === 'QRPH'
                   ? `<span style="font-size: 0.8rem; background: #e6fcf5; color: #0ca678; font-weight: 700; padding: 2px 6px; border-radius: 4px;">🇵🇭 QRPH</span>`
-                  : `<span style="font-size: 0.8rem; background: #f1f3f5; padding: 2px 6px; border-radius: 4px;">💵 ${t.payment_method}</span>`;
+                  : `<span style="font-size: 0.8rem; background: rgba(128, 128, 128, 0.1); padding: 2px 6px; border-radius: 4px;">💵 ${t.payment_method}</span>`;
 
                 return `
-                  <div style="border: 1px solid ${isVoided ? '#ffa8a8' : (isPending ? '#ffe066' : '#dee2e6')}; background: ${isVoided ? '#fff5f5' : (isPending ? '#fffdf0' : '#fff')}; border-radius: 12px; padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                  <div style="border: 1px solid ${isVoided ? '#ffa8a8' : (isPending ? '#ffe066' : 'var(--border-color)')}; background: ${isVoided ? 'var(--danger-bg)' : (isPending ? 'var(--warning-bg)' : 'var(--bg-card)')}; border-radius: 12px; padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
                     <div>
                       <div style="display: flex; align-items: center; gap: 10px;">
                         <strong style="font-size: 1.05rem;">Receipt #${t.receipt_number}</strong>
                         ${statusBadge}
                         ${payBadge}
                       </div>
-                      <div style="font-size: 0.82rem; color: #868e96; margin-top: 4px;">
+                      <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 4px;">
                         🕒 ${t.created_at} ${t.cashier_note ? ` • Note: <em>"${t.cashier_note}"</em>` : ''}
                       </div>
                       <div style="font-size: 0.88rem; color: #495057; margin-top: 6px;">
@@ -743,23 +785,23 @@ const Admin = {
                           ${currency}${t.total.toFixed(2)}
                         </div>
                         ${t.payment_method === 'CASH' && !isVoided ? `
-                          <div style="font-size: 0.75rem; color: #868e96;">Change: ${currency}${(t.change_due || 0).toFixed(2)}</div>
+                          <div style="font-size: 0.75rem; color: var(--text-muted);">Change: ${currency}${(t.change_due || 0).toFixed(2)}</div>
                         ` : ''}
                       </div>
 
                       <div style="display: flex; gap: 6px;">
                         ${isPending ? `
-                          <button class="btn btn-success" style="padding: 8px 12px; font-size: 0.85rem;" onclick="Admin.completeOrderFromAdmin(${t.id}, '${t.receipt_number}')">
+                          <button class="btn btn-primary" style="padding: 8px 12px; font-size: 0.85rem;" onclick="Admin.completeOrderFromAdmin(${t.id}, '${t.receipt_number}')">
                             ✅ Complete
                           </button>
                         ` : ''}
 
                         ${!isVoided ? `
-                          <button class="btn btn-danger" style="padding: 8px 12px; font-size: 0.85rem;" onclick="Admin.promptVoidTransaction(${t.id}, '${t.receipt_number}', ${t.total})">
+                          <button class="btn btn-danger" style="padding: 8px 12px; font-size: 0.85rem;" onclick="Admin.promptVoidTransaction(${t.id}, '${t.receipt_number}', ${t.total}, this)">
                             ↩️ Void
                           </button>
                         ` : `
-                          <span style="font-size: 0.85rem; color: #868e96; font-style: italic;">Stock restored</span>
+                          <span style="font-size: 0.85rem; color: var(--text-muted); font-style: italic;">Stock restored</span>
                         `}
                       </div>
                     </div>
@@ -798,22 +840,31 @@ const Admin = {
     this.renderTransactionsTab(dateInput ? dateInput.value : '', statusSelect ? statusSelect.value : 'ALL');
   },
 
-  async promptVoidTransaction(id, receiptNumber, total) {
-    const reason = prompt(`Are you sure you want to VOID receipt #${receiptNumber} ($${total})?\n\nThis will undo the sale and automatically return all items to inventory.\n\nEnter void reason:`, 'Customer cancelled / Accidental entry');
-    
-    if (reason !== null && reason.trim()) {
-      try {
-        const res = await API.voidTransaction(id, reason.trim());
-        if (res.success) {
-          App.showToast(`Receipt #${receiptNumber} voided & stock restored!`, 'success');
-          this.filterTransactions();
-          Cashier.loadProducts(); // Update stock in cashier grid
-        } else {
-          App.showToast(res.error || 'Failed to void transaction', 'danger');
+  async promptVoidTransaction(id, receiptNumber, total, btnElement) {
+    if (btnElement && btnElement.dataset.confirm !== 'true') {
+      btnElement.dataset.confirm = 'true';
+      const originalHtml = btnElement.innerHTML;
+      btnElement.innerHTML = 'Sure?';
+      setTimeout(() => {
+        if (btnElement) {
+          btnElement.dataset.confirm = 'false';
+          btnElement.innerHTML = originalHtml;
         }
-      } catch (err) {
-        App.showToast('Network error while voiding', 'danger');
+      }, 3000);
+      return;
+    }
+
+    try {
+      const res = await API.voidTransaction(id, 'Customer cancelled / Accidental entry');
+      if (res.success) {
+        App.showToast(`Receipt #${receiptNumber} voided & stock restored!`, 'success');
+        this.filterTransactions();
+        Cashier.loadProducts(); // Update stock in cashier grid
+      } else {
+        App.showToast(res.error || 'Failed to void transaction', 'danger');
       }
+    } catch (err) {
+      App.showToast('Network error while voiding', 'danger');
     }
   },
 
@@ -847,10 +898,10 @@ const Admin = {
           <div class="admin-card-header">
             <div>
               <div class="admin-card-title">📊 End-of-Day (EOD) Cash & Sales Report</div>
-              <p style="color: #868e96; font-size: 0.85rem;">Daily sales revenue, cash drawer reconciliation, item breakdown, and peak hours.</p>
+              <p style="color: var(--text-muted); font-size: 0.85rem;">Daily sales revenue, cash drawer reconciliation, item breakdown, and peak hours.</p>
             </div>
             <div style="display: flex; gap: 10px; align-items: center;">
-              <input type="date" id="eod-date-picker" value="${targetDate}" style="padding: 8px 12px; border: 1px solid #ced4da; border-radius: 6px; font-weight: 600;" onchange="Admin.renderReportsTab(this.value)" />
+              <input type="date" id="eod-date-picker" value="${targetDate}" style="padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 6px; font-weight: 600;" onchange="Admin.renderReportsTab(this.value)" />
               <button class="btn btn-secondary" onclick="window.print()">🖨️ Print Report</button>
             </div>
           </div>
@@ -886,7 +937,7 @@ const Admin = {
 
               <div class="metric-card">
                 <div class="metric-card-label">Orders Completed</div>
-                <div class="metric-card-value">${s.completed_orders} <span style="font-size: 0.9rem; font-weight: normal; color: #868e96;">(${s.total_items_sold} items)</span></div>
+                <div class="metric-card-value">${s.completed_orders} <span style="font-size: 0.9rem; font-weight: normal; color: var(--text-muted);">(${s.total_items_sold} items)</span></div>
               </div>
 
               <div class="metric-card" style="border-left: 4px solid #c92a2a;">
@@ -899,7 +950,7 @@ const Admin = {
             <div style="margin-top: 24px;">
               <h4 style="font-size: 1.1rem; margin-bottom: 12px;">🍗 Product Sales Breakdown</h4>
               ${(reportRes.product_sales || []).length === 0 ? `
-                <p style="color: #868e96; font-style: italic;">No sales recorded on this date.</p>
+                <p style="color: var(--text-muted); font-style: italic;">No sales recorded on this date.</p>
               ` : `
                 <table class="data-table">
                   <thead>
@@ -917,13 +968,13 @@ const Admin = {
                       return `
                         <tr>
                           <td><strong>${ps.product_name}</strong></td>
-                          <td><span style="background: #f1f3f5; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem;">${ps.category}</span></td>
+                          <td><span style="background: rgba(128, 128, 128, 0.1); padding: 2px 6px; border-radius: 4px; font-size: 0.8rem;">${ps.category}</span></td>
                           <td style="font-weight: bold;">${ps.quantity_sold}</td>
-                          <td style="font-weight: bold; color: #d9480f;">${currency}${ps.revenue_generated.toFixed(2)}</td>
+                          <td style="font-weight: bold; color: var(--primary);">${currency}${ps.revenue_generated.toFixed(2)}</td>
                           <td>
                             <div style="display: flex; align-items: center; gap: 8px;">
                               <span>${pct}%</span>
-                              <div style="flex: 1; max-width: 80px; height: 6px; background: #e9ecef; border-radius: 3px; overflow: hidden;">
+                              <div style="flex: 1; max-width: 80px; height: 6px; background: rgba(128, 128, 128, 0.15); border-radius: 3px; overflow: hidden;">
                                 <div style="width: ${pct}%; height: 100%; background: #d9480f;"></div>
                               </div>
                             </div>
@@ -941,10 +992,10 @@ const Admin = {
               <h4 style="font-size: 1.1rem; margin-bottom: 12px;">📊 Category Revenue</h4>
               <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px;">
                 ${(reportRes.category_sales || []).map(cs => `
-                  <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 12px;">
+                  <div style="background: var(--bg-app); border: 1px solid #dee2e6; border-radius: 8px; padding: 12px;">
                     <div style="font-weight: bold; font-size: 1rem;">${cs.category}</div>
-                    <div style="font-size: 1.25rem; font-weight: 800; color: #d9480f; margin: 4px 0;">${currency}${cs.revenue_generated.toFixed(2)}</div>
-                    <div style="font-size: 0.8rem; color: #868e96;">${cs.quantity_sold} items sold</div>
+                    <div style="font-size: 1.25rem; font-weight: 800; color: var(--primary); margin: 4px 0;">${currency}${cs.revenue_generated.toFixed(2)}</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted);">${cs.quantity_sold} items sold</div>
                   </div>
                 `).join('')}
               </div>
@@ -977,7 +1028,7 @@ const Admin = {
       content.innerHTML = `
         <div class="admin-card">
           <div class="admin-card-title">🏪 Store & Business Settings</div>
-          <p style="color: #868e96; font-size: 0.85rem; margin-bottom: 16px;">Customize your store name, currency symbol, and tax rate.</p>
+          <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 16px;">Customize your store name, currency symbol, and tax rate.</p>
 
           <form id="settings-form" style="max-width: 480px;">
             <div class="form-group">
@@ -1012,7 +1063,7 @@ const Admin = {
 
         <div class="admin-card">
           <div class="admin-card-title">🎨 Appearance Settings</div>
-          <p style="color: #868e96; font-size: 0.85rem; margin-bottom: 16px;">Customize how the application looks on this device (changes apply immediately).</p>
+          <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 16px;">Customize how the application looks on this device (changes apply immediately).</p>
           
           <div style="display: flex; gap: 30px; flex-wrap: wrap;">
             <div>
@@ -1037,7 +1088,7 @@ const Admin = {
 
         <div class="admin-card">
           <div class="admin-card-title">🔒 Change Admin PIN</div>
-          <p style="color: #868e96; font-size: 0.85rem; margin-bottom: 16px;">Update the PIN used to unlock this Admin Dashboard.</p>
+          <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 16px;">Update the PIN used to unlock this Admin Dashboard.</p>
 
           <form id="pin-change-form" style="max-width: 480px;">
             <div class="form-group">
@@ -1056,9 +1107,9 @@ const Admin = {
 
         <div class="admin-card">
           <div class="admin-card-title">📶 Local Network Mobile Connection Info</div>
-          <p style="color: #868e96; font-size: 0.85rem; margin-bottom: 12px;">Type any of these URLs into your mobile device's browser (Safari/Chrome):</p>
+          <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 12px;">Type any of these URLs into your mobile device's browser (Safari/Chrome):</p>
           
-          <div style="background: #f1f3f5; padding: 14px; border-radius: 8px; font-family: monospace; font-size: 1rem;">
+          <div style="background: rgba(128, 128, 128, 0.1); padding: 14px; border-radius: 8px; font-family: monospace; font-size: 1rem;">
             ${ips.length > 0 ? ips.map(ip => `
               <div style="margin: 4px 0;">📲 <strong>http://${ip}:${port}</strong></div>
             `).join('') : `

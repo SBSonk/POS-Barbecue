@@ -1,4 +1,4 @@
-﻿import { Router, Request, Response } from 'express';
+import { Router, Request, Response } from 'express';
 import { getDb } from '../database/db';
 
 const router = Router();
@@ -206,6 +206,24 @@ router.delete('/:id', async (req: Request, res: Response) => {
     `, [id]);
 
     res.json({ success: true, message: `Product '${product.name}' deactivated successfully` });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// DELETE /api/products/:id/hard - Hard delete product completely
+router.delete('/:id/hard', async (req: Request, res: Response) => {
+  try {
+    const db = await getDb();
+    const { id } = req.params;
+    const product = await db.get('SELECT * FROM products WHERE id = ?', [id]) as any;
+    if (!product) {
+      return res.status(404).json({ success: false, error: 'Product not found' });
+    }
+
+    await db.run('DELETE FROM products WHERE id = ?', [id]);
+
+    res.json({ success: true, message: `Product '${product.name}' permanently deleted` });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }

@@ -34,8 +34,21 @@ const Cashier = {
     if (clearBtn) {
       clearBtn.addEventListener('click', () => {
         if (Object.keys(this.cart).length > 0) {
-          if (confirm('Are you sure you want to clear the entire cart?')) {
+          if (clearBtn.dataset.confirm !== 'true') {
+            clearBtn.dataset.confirm = 'true';
+            const originalText = clearBtn.innerHTML;
+            clearBtn.innerHTML = 'Sure?';
+            clearBtn.style.color = 'var(--danger)';
+            setTimeout(() => {
+              clearBtn.dataset.confirm = 'false';
+              clearBtn.innerHTML = originalText;
+              clearBtn.style.color = '';
+            }, 3000);
+          } else {
             this.clearCart();
+            clearBtn.dataset.confirm = 'false';
+            clearBtn.innerHTML = 'Clear';
+            clearBtn.style.color = '';
           }
         }
       });
@@ -170,7 +183,7 @@ const Cashier = {
 
     if (filtered.length === 0) {
       grid.innerHTML = `
-        <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #868e96;">
+        <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #6c757d;">
           <div style="font-size: 2.5rem; margin-bottom: 8px;">🔍</div>
           <p>No items found matching your filter</p>
         </div>
@@ -334,7 +347,7 @@ const Cashier = {
         <div class="empty-cart-msg">
           <div class="icon">🛒</div>
           <p style="font-weight: 600; font-size: 1.05rem;">Your cart is empty</p>
-          <p style="font-size: 0.85rem; color: var(--text-muted);">Tap any product card to start an order</p>
+          <p style="font-size: 0.85rem; color: #6c757d;">Tap any product card to start an order</p>
           <button class="empty-cart-back-btn" id="empty-cart-back-btn" onclick="Cashier.closeCartDrawer()" type="button">
             <span>←</span> Back to Main Menu
           </button>
@@ -528,9 +541,6 @@ const Cashier = {
           Pending.loadPendingOrders();
         }
 
-        // Show receipt modal
-        this.showReceiptModal(res.transaction);
-
         App.showToast(`Order #${res.transaction.receipt_number} queued to Kitchen!`, 'success');
       } else {
         App.showToast(res.error || 'Queueing failed', 'danger');
@@ -605,7 +615,7 @@ const Cashier = {
 
     let statusBadge = `<span style="background: #e6fcf5; color: #0ca678; font-weight: 700; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem;">● COMPLETED</span>`;
     if (isPending) {
-      statusBadge = `<span style="background: #fff9db; color: #f59f00; font-weight: 700; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem;">🕒 PENDING ORDER</span>`;
+      statusBadge = `<span style="background: var(--warning-bg); color: #f59f00; font-weight: 700; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem;">🕒 PENDING ORDER</span>`;
     } else if (isVoided) {
       statusBadge = `<span style="background: #ffe3e3; color: #e03131; font-weight: 700; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem;">✕ VOIDED</span>`;
     }
@@ -629,7 +639,7 @@ const Cashier = {
             <h2 style="font-size: 1.2rem; margin-bottom: 4px;">🍖 SMOKIN' BBQ & BREWS 🍺</h2>
             <p style="font-size: 0.8rem; color: #495057;">Receipt #${transaction.receipt_number}</p>
             <div style="margin: 4px 0;">${statusBadge}</div>
-            <p style="font-size: 0.75rem; color: #868e96;">${new Date().toLocaleString()}</p>
+            <p style="font-size: 0.75rem; color: #6c757d;">${new Date().toLocaleString()}</p>
           </div>
           <div class="receipt-divider"></div>
           <div style="margin: 10px 0;">

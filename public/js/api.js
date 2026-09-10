@@ -51,6 +51,13 @@ const API = {
     return res.json();
   },
 
+  async hardDeleteProduct(id) {
+    const res = await fetch(`/api/products/${id}/hard`, {
+      method: 'DELETE'
+    });
+    return res.json();
+  },
+
   // Transactions
   async checkout(data) {
     const res = await fetch('/api/transactions', {

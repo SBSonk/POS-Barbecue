@@ -42,7 +42,7 @@ async function startServer() {
     await seedInitialProducts();
 
     // 2. Start Express Server
-    const server = app.listen(PORT, () => {
+    const server = app.listen(3000, '0.0.0.0', () => {
       const ips = getLocalIpAddresses();
 
       console.log('\n' + '='.repeat(60));
