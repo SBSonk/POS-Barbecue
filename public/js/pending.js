@@ -1,4 +1,4 @@
-﻿// Pending Orders & Kitchen Queue Controller
+// Pending Orders & Kitchen Queue Controller
 const Pending = {
   orders: [],
   currentFilter: 'ALL',
@@ -186,8 +186,8 @@ const Pending = {
             <button class="btn btn-secondary" style="padding: 10px 12px; font-size: 0.9rem; color: #e03131;" onclick="Pending.voidOrder(${order.id})" title="Cancel Order">
               ✕ Cancel
             </button>
-            <button class="btn btn-success pending-complete-btn" onclick="Pending.markAsComplete(${order.id})">
-              <span>✅</span> Mark as Complete
+            <button class="btn btn-success pending-complete-btn" onclick="Pending.payAndComplete(${order.id})">
+              <span>✅</span> Pay & Complete
             </button>
           </div>
         </div>
@@ -195,32 +195,14 @@ const Pending = {
     }).join('');
   },
 
-  async markAsComplete(id) {
-    const card = document.getElementById(`pending-card-${id}`);
-    if (card) {
-      card.style.opacity = '0.5';
-      card.style.pointerEvents = 'none';
-    }
-
-    try {
-      const res = await API.completeTransaction(id);
-      if (res.success) {
-        App.showToast(`Order #${res.transaction?.receipt_number || id} completed!`, 'success');
-        await this.loadPendingOrders();
-      } else {
-        App.showToast(res.error || 'Failed to complete order', 'danger');
-        if (card) {
-          card.style.opacity = '1';
-          card.style.pointerEvents = 'auto';
-        }
-      }
-    } catch (err) {
-      console.error('Error completing order:', err);
-      App.showToast('Network error while completing order', 'danger');
-      if (card) {
-        card.style.opacity = '1';
-        card.style.pointerEvents = 'auto';
-      }
+  payAndComplete(id) {
+    const order = this.orders.find(o => o.id === id);
+    if (!order) return;
+    
+    if (typeof Cashier !== 'undefined' && Cashier.openPaymentModalForPending) {
+      Cashier.openPaymentModalForPending(id, order.total);
+    } else {
+      App.showToast('Payment system not ready', 'danger');
     }
   },
 

@@ -1,4 +1,4 @@
-﻿// Cashier Logic & Cart Controller
+// Cashier Logic & Cart Controller
 const Cashier = {
   products: [],
   categories: [],
@@ -9,6 +9,9 @@ const Cashier = {
   taxRate: 0,
   paymentMethod: 'CASH',
   amountTendered: 0,
+
+  payingPendingId: null,
+  payingPendingTotal: 0,
 
   async init() {
     this.bindEvents();
@@ -38,10 +41,10 @@ const Cashier = {
       });
     }
 
-    // Checkout button (open payment modal)
+    // Checkout button (open queue modal)
     const checkoutBtn = document.getElementById('checkout-btn');
     if (checkoutBtn) {
-      checkoutBtn.addEventListener('click', () => this.openPaymentModal());
+      checkoutBtn.addEventListener('click', () => this.openQueueModal());
     }
 
     // Mobile bar click (open mobile cart drawer)
@@ -310,7 +313,7 @@ const Cashier = {
 
     if (checkoutBtn) {
       checkoutBtn.disabled = cartKeys.length === 0;
-      checkoutBtn.innerHTML = `💳 Pay ${this.currency}${totals.total.toFixed(2)}`;
+      checkoutBtn.innerHTML = `<span>🕒</span> Send to Kitchen (${this.currency}${totals.total.toFixed(2)})`;
     }
 
     // Update Mobile bottom bar
@@ -361,31 +364,41 @@ const Cashier = {
     }).join('');
   },
 
-  openPaymentModal() {
+  openQueueModal() {
     const totals = this.getTotals();
     if (totals.count === 0) return;
+    
+    const noteInput = document.getElementById('queue-order-note');
+    if (noteInput) noteInput.value = '';
+    
+    document.getElementById('queue-modal').classList.remove('hidden');
+  },
 
+  openPaymentModalForPending(pendingId, totalAmount) {
+    this.payingPendingId = pendingId;
+    this.payingPendingTotal = totalAmount;
+    
     this.paymentMethod = 'CASH';
-    this.amountTendered = totals.total;
+    this.amountTendered = totalAmount;
 
     this.updateCurrencyLabels();
 
-    document.getElementById('payment-modal-total').textContent = `${this.currency}${totals.total.toFixed(2)}`;
+    document.getElementById('payment-modal-total').textContent = `${this.currency}${totalAmount.toFixed(2)}`;
     const qrphAmount = document.getElementById('qrph-modal-amount');
     if (qrphAmount) {
-      qrphAmount.textContent = `${this.currency}${totals.total.toFixed(2)}`;
+      qrphAmount.textContent = `${this.currency}${totalAmount.toFixed(2)}`;
     }
 
     const qrphRef = document.getElementById('qrph-ref-input');
     if (qrphRef) qrphRef.value = '';
     
     // Render preset cash buttons
-    this.renderCashPresets(totals.total);
+    this.renderCashPresets(totalAmount);
     this.selectPaymentMethod('CASH');
 
     const tenderedInput = document.getElementById('tendered-cash-input');
     if (tenderedInput) {
-      tenderedInput.value = totals.total.toFixed(2);
+      tenderedInput.value = totalAmount.toFixed(2);
     }
     this.updatePaymentChange();
 
@@ -413,11 +426,11 @@ const Cashier = {
     }
 
     if (method === 'QRPH') {
-      const totals = this.getTotals();
-      this.amountTendered = totals.total;
+      const amount = this.payingPendingId ? this.payingPendingTotal : this.getTotals().total;
+      this.amountTendered = amount;
       const qrphAmount = document.getElementById('qrph-modal-amount');
       if (qrphAmount) {
-        qrphAmount.textContent = `${this.currency}${totals.total.toFixed(2)}`;
+        qrphAmount.textContent = `${this.currency}${amount.toFixed(2)}`;
       }
     }
   },
@@ -463,15 +476,15 @@ const Cashier = {
   },
 
   updatePaymentChange() {
-    const totals = this.getTotals();
-    const change = Math.max(0, this.amountTendered - totals.total);
+    const amountDue = this.payingPendingId ? this.payingPendingTotal : this.getTotals().total;
+    const change = Math.max(0, this.amountTendered - amountDue);
     const changeEl = document.getElementById('change-due-val');
     if (changeEl) {
       changeEl.textContent = `${this.currency}${change.toFixed(2)}`;
     }
   },
 
-  async processCheckout(orderStatus = 'COMPLETED') {
+  async processQueueOrder() {
     const totals = this.getTotals();
     if (totals.count === 0) return;
 
@@ -480,43 +493,31 @@ const Cashier = {
       quantity: this.cart[id].quantity
     }));
 
-    const noteInput = document.getElementById('cashier-order-note');
-    let cashierNote = noteInput ? noteInput.value.trim() : '';
-
-    if (this.paymentMethod === 'QRPH') {
-      const qrphRef = document.getElementById('qrph-ref-input');
-      const refVal = qrphRef ? qrphRef.value.trim() : '';
-      if (refVal) {
-        cashierNote = cashierNote ? `${cashierNote} | QRPH Ref: ${refVal}` : `QRPH Ref: ${refVal}`;
-      }
-    }
+    const noteInput = document.getElementById('queue-order-note');
+    const cashierNote = noteInput ? noteInput.value.trim() : '';
 
     const payload = {
       items,
-      payment_method: this.paymentMethod,
-      amount_tendered: this.paymentMethod === 'CASH' ? this.amountTendered : totals.total,
+      payment_method: 'UNPAID', // Payment happens later
+      amount_tendered: 0,
       cashier_note: cashierNote,
-      status: orderStatus
+      status: 'PENDING'
     };
 
-    const confirmBtn = document.getElementById('confirm-payment-btn');
-    const pendingBtn = document.getElementById('confirm-pending-btn');
+    const confirmBtn = document.getElementById('confirm-queue-btn');
     if (confirmBtn) confirmBtn.disabled = true;
-    if (pendingBtn) pendingBtn.disabled = true;
 
     try {
       const res = await API.checkout(payload);
 
       if (res.success && res.transaction) {
-        // Close payment modal & drawer
-        document.getElementById('payment-modal').classList.add('hidden');
+        // Close queue modal & drawer
+        document.getElementById('queue-modal').classList.add('hidden');
         const cartPanel = document.getElementById('pos-cart-panel');
         if (cartPanel) cartPanel.classList.remove('mobile-open');
 
         // Clear note & cart
         if (noteInput) noteInput.value = '';
-        const qrphRef = document.getElementById('qrph-ref-input');
-        if (qrphRef) qrphRef.value = '';
         this.clearCart();
 
         // Refresh products to show updated stock
@@ -530,20 +531,68 @@ const Cashier = {
         // Show receipt modal
         this.showReceiptModal(res.transaction);
 
-        if (orderStatus === 'PENDING') {
-          App.showToast(`Order #${res.transaction.receipt_number} queued to Pending Orders!`, 'success');
-        } else {
-          App.showToast('Sale completed successfully!', 'success');
-        }
+        App.showToast(`Order #${res.transaction.receipt_number} queued to Kitchen!`, 'success');
       } else {
-        App.showToast(res.error || 'Checkout failed', 'danger');
+        App.showToast(res.error || 'Queueing failed', 'danger');
       }
     } catch (err) {
-      console.error('Checkout error:', err);
+      console.error('Queue error:', err);
       App.showToast('Network error during checkout', 'danger');
     } finally {
       if (confirmBtn) confirmBtn.disabled = false;
-      if (pendingBtn) pendingBtn.disabled = false;
+    }
+  },
+
+  async processPayment() {
+    if (!this.payingPendingId) return;
+
+    let noteAppend = '';
+    if (this.paymentMethod === 'QRPH') {
+      const qrphRef = document.getElementById('qrph-ref-input');
+      const refVal = qrphRef ? qrphRef.value.trim() : '';
+      if (refVal) {
+        noteAppend = ` | QRPH Ref: ${refVal}`;
+      }
+    }
+
+    const amountDue = this.payingPendingTotal;
+    const amountTendered = this.paymentMethod === 'CASH' ? this.amountTendered : amountDue;
+    const changeDue = Math.max(0, amountTendered - amountDue);
+
+    const payload = {
+      payment_method: this.paymentMethod,
+      amount_tendered: amountTendered,
+      change_due: changeDue,
+      note_append: noteAppend
+    };
+
+    const confirmBtn = document.getElementById('confirm-payment-btn');
+    if (confirmBtn) confirmBtn.disabled = true;
+
+    try {
+      const res = await API.payPendingTransaction(this.payingPendingId, payload);
+      if (res.success && res.transaction) {
+        document.getElementById('payment-modal').classList.add('hidden');
+        
+        const qrphRef = document.getElementById('qrph-ref-input');
+        if (qrphRef) qrphRef.value = '';
+
+        if (typeof Pending !== 'undefined' && Pending.loadPendingOrders) {
+          Pending.loadPendingOrders();
+        }
+
+        this.showReceiptModal(res.transaction);
+        App.showToast('Payment successful and order completed!', 'success');
+      } else {
+        App.showToast(res.error || 'Payment failed', 'danger');
+      }
+    } catch (err) {
+      console.error('Payment error:', err);
+      App.showToast('Network error during payment', 'danger');
+    } finally {
+      if (confirmBtn) confirmBtn.disabled = false;
+      this.payingPendingId = null;
+      this.payingPendingTotal = 0;
     }
   },
 

@@ -1,4 +1,4 @@
-﻿// API Client Wrapper
+// API Client Wrapper
 const API = {
   // Products
   async getProducts(params = {}) {
@@ -67,12 +67,17 @@ const API = {
     return res.json();
   },
 
-  async completeTransaction(id) {
+  async completeTransaction(id, data = {}) {
     const res = await fetch(`/api/transactions/${id}/complete`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
     });
     return res.json();
+  },
+
+  async payPendingTransaction(id, data) {
+    return this.completeTransaction(id, data);
   },
 
   async updateTransactionStatus(id, status) {

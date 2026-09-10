@@ -1,6 +1,7 @@
-﻿// Main App Orchestrator & View Switcher
+// Main App Orchestrator & View Switcher
 const App = {
   async init() {
+    this.loadAppearance();
     this.bindGlobalEvents();
     await this.loadServerInfo();
     await Cashier.init();
@@ -8,6 +9,33 @@ const App = {
       Pending.init();
     }
     Admin.init();
+  },
+
+  loadAppearance() {
+    const theme = localStorage.getItem('pos_theme') || 'light';
+    const accent = localStorage.getItem('pos_accent_color') || '#d9480f';
+    const accentDark = localStorage.getItem('pos_accent_dark') || '#b63806';
+    
+    this.setTheme(theme, false);
+    this.setAccent(accent, accentDark, false);
+  },
+
+  setTheme(theme, save = true) {
+    if (theme === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+    if (save) localStorage.setItem('pos_theme', theme);
+  },
+
+  setAccent(primary, primaryDark, save = true) {
+    document.documentElement.style.setProperty('--primary', primary);
+    document.documentElement.style.setProperty('--primary-dark', primaryDark);
+    if (save) {
+      localStorage.setItem('pos_accent_color', primary);
+      localStorage.setItem('pos_accent_dark', primaryDark);
+    }
   },
 
   bindGlobalEvents() {

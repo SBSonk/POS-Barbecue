@@ -1,4 +1,4 @@
-﻿import { Router, Request, Response } from 'express';
+import { Router, Request, Response } from 'express';
 import { getLocalIpAddresses } from '../utils/network';
 import { getDb } from '../database/db';
 
@@ -8,7 +8,7 @@ router.get('/', async (_req: Request, res: Response) => {
   try {
     const db = await getDb();
     const addresses = getLocalIpAddresses();
-    const port = process.env.PORT || 3000;
+    const port = (process.env.PORT && process.env.PORT !== '8080') ? process.env.PORT : 3000;
     const businessNameRow = await db.get("SELECT value FROM settings WHERE key = 'business_name'") as any;
 
     res.json({

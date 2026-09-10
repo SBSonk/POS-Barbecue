@@ -1,4 +1,4 @@
-﻿// Admin Dashboard Logic
+// Admin Dashboard Logic
 const Admin = {
   isAuthenticated: false,
   pinEntered: '',
@@ -6,6 +6,7 @@ const Admin = {
   products: [],
   categories: [],
   settings: {},
+  productSort: 'category',
   restockCategory: 'ALL',
   restockSort: 'category',
   restockSearch: '',
@@ -152,90 +153,124 @@ const Admin = {
   // -------------------------------------------------------------
   // TAB 1: PRODUCT MANAGEMENT
   // -------------------------------------------------------------
-  async renderProductsTab() {
+  handleProductSort(sortKey) {
+    this.productSort = sortKey;
+    this.renderProductsTab(false);
+  },
+
+  getSortedProducts() {
+    let list = [...this.products];
+    if (this.productSort === 'category') {
+      list.sort((a, b) => {
+        const catCompare = (a.category || '').localeCompare(b.category || '');
+        if (catCompare !== 0) return catCompare;
+        return (a.name || '').localeCompare(b.name || '');
+      });
+    } else if (this.productSort === 'name_asc') {
+      list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    } else if (this.productSort === 'price_asc') {
+      list.sort((a, b) => a.price - b.price);
+    } else if (this.productSort === 'price_desc') {
+      list.sort((a, b) => b.price - a.price);
+    } else if (this.productSort === 'stock_asc') {
+      list.sort((a, b) => a.stock - b.stock);
+    } else if (this.productSort === 'stock_desc') {
+      list.sort((a, b) => b.stock - a.stock);
+    }
+    return list;
+  },
+
+  async renderProductsTab(fetchData = true) {
     const content = document.getElementById('admin-tab-content');
     if (!content) return;
 
-    content.innerHTML = `<div style="text-align:center; padding: 40px;">Loading products...</div>`;
+    if (fetchData) {
+      content.innerHTML = `<div style="text-align:center; padding: 40px;">Loading products...</div>`;
+      try {
+        const [prodRes, setRes] = await Promise.all([
+          API.getProducts({ activeOnly: false }),
+          API.getSettings()
+        ]);
+        this.products = prodRes.products || [];
+        this.currency = setRes.settings?.currency_symbol || '$';
+      } catch (err) {
+        content.innerHTML = `<div style="color: red; padding: 20px;">Failed to load products: ${err.message}</div>`;
+        return;
+      }
+    }
 
-    try {
-      const [prodRes, setRes] = await Promise.all([
-        API.getProducts({ activeOnly: false }),
-        API.getSettings()
-      ]);
+    const sortedProducts = this.getSortedProducts();
 
-      const products = prodRes.products || [];
-      this.products = products;
-      const currency = setRes.settings?.currency_symbol || '$';
-
-      content.innerHTML = `
-        <div class="admin-card">
-          <div class="admin-card-header">
-            <div>
-              <div class="admin-card-title">🍗 Product & Menu Management</div>
-              <p style="color: #868e96; font-size: 0.85rem;">Add, edit items, adjust prices, or configure low stock alert limits.</p>
-            </div>
+    content.innerHTML = `
+      <div class="admin-card">
+        <div class="admin-card-header" style="flex-wrap: wrap; gap: 12px;">
+          <div style="flex: 1; min-width: 250px;">
+            <div class="admin-card-title">🍗 Product & Menu Management</div>
+            <p style="color: #868e96; font-size: 0.85rem;">Add, edit items, adjust prices, or configure low stock alert limits.</p>
+          </div>
+          <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <select style="padding: 8px 12px; border: 1px solid #ced4da; border-radius: 6px; font-size: 0.9rem;" onchange="Admin.handleProductSort(this.value)">
+              <option value="category" ${this.productSort === 'category' ? 'selected' : ''}>Sort: Category</option>
+              <option value="name_asc" ${this.productSort === 'name_asc' ? 'selected' : ''}>Sort: Name (A-Z)</option>
+              <option value="price_asc" ${this.productSort === 'price_asc' ? 'selected' : ''}>Sort: Price (Low to High)</option>
+              <option value="price_desc" ${this.productSort === 'price_desc' ? 'selected' : ''}>Sort: Price (High to Low)</option>
+              <option value="stock_asc" ${this.productSort === 'stock_asc' ? 'selected' : ''}>Sort: Stock (Low to High)</option>
+              <option value="stock_desc" ${this.productSort === 'stock_desc' ? 'selected' : ''}>Sort: Stock (High to Low)</option>
+            </select>
             <button class="btn btn-primary" onclick="Admin.openProductModal()">+ Add New Product</button>
           </div>
+        </div>
 
-          <div style="overflow-x: auto;">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>Item</th>
-                  <th>Category</th>
-                  <th>Price</th>
-                  <th>Stock</th>
-                  <th>Alert Limit</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${products.map(p => `
-                  <tr>
-                    <td>
-                      <div style="display: flex; align-items: center; gap: 8px;">
-                        <span style="font-size: 1.4rem;">${p.icon || '🍖'}</span>
-                        <div>
-                          <strong>${p.name}</strong>
-                          ${p.description ? `<div style="font-size: 0.75rem; color: #868e96;">${p.description}</div>` : ''}
-                        </div>
-                      </div>
-                    </td>
-                    <td><span style="background: #e9ecef; padding: 3px 8px; border-radius: 4px; font-weight: 600;">${p.category}</span></td>
-                    <td style="font-weight: 700; color: #d9480f;">${currency}${p.price.toFixed(2)}</td>
-                    <td>
-                      <span class="product-stock-badge ${p.stock <= 0 ? 'stock-out' : (p.stock <= p.low_stock_threshold ? 'stock-low' : 'stock-ok')}">
-                        ${p.stock} in stock
-                      </span>
-                    </td>
-                    <td>${p.low_stock_threshold}</td>
-                    <td>
-                      <span style="color: ${p.is_active ? '#2b8a3e' : '#c92a2a'}; font-weight: 600;">
-                        ${p.is_active ? '● Active' : '○ Disabled'}
-                      </span>
-                    </td>
-                    <td>
-                      <div style="display: flex; gap: 6px;">
-                        <button class="btn btn-secondary" style="padding: 6px 10px; font-size: 0.8rem;" onclick="Admin.openProductModal(${p.id})">✏️ Edit</button>
-                        ${p.is_active ? `
-                          <button class="btn btn-danger" style="padding: 6px 10px; font-size: 0.8rem;" onclick="Admin.toggleProductStatus(${p.id})">Disable</button>
-                        ` : `
-                          <button class="btn btn-success" style="padding: 6px 10px; font-size: 0.8rem;" onclick="Admin.reactivateProduct(${p.id})">Enable</button>
-                        `}
-                      </div>
-                    </td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
+        <div class="admin-products-grid">
+          ${sortedProducts.map(p => `
+              <div class="admin-product-card" style="${!p.is_active ? 'opacity: 0.7;' : ''}">
+                <div class="admin-product-card-header">
+                  <div class="admin-product-card-title">
+                    <span class="admin-product-card-title-icon">${p.icon || '🍖'}</span>
+                    <div>
+                      <strong>${p.name}</strong>
+                      ${p.description ? `<div style="font-size: 0.75rem; color: #868e96; margin-top: 2px;">${p.description}</div>` : ''}
+                    </div>
+                  </div>
+                  <span style="background: #e9ecef; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">${p.category}</span>
+                </div>
+                
+                <div class="admin-product-card-body">
+                  <div class="admin-product-card-stat">
+                    <span class="admin-product-card-stat-label">Price</span>
+                    <span style="font-weight: 700; color: #d9480f;">${this.currency}${p.price.toFixed(2)}</span>
+                  </div>
+                  <div class="admin-product-card-stat">
+                    <span class="admin-product-card-stat-label">Stock</span>
+                    <span class="product-stock-badge ${p.stock <= 0 ? 'stock-out' : (p.stock <= p.low_stock_threshold ? 'stock-low' : 'stock-ok')}">
+                      ${p.stock} in stock
+                    </span>
+                  </div>
+                  <div class="admin-product-card-stat">
+                    <span class="admin-product-card-stat-label">Alert Limit</span>
+                    <span>${p.low_stock_threshold}</span>
+                  </div>
+                  <div class="admin-product-card-stat">
+                    <span class="admin-product-card-stat-label">Status</span>
+                    <span style="color: ${p.is_active ? '#2b8a3e' : '#c92a2a'}; font-weight: 600;">
+                      ${p.is_active ? '● Active' : '○ Disabled'}
+                    </span>
+                  </div>
+                </div>
+
+                <div class="admin-product-card-actions">
+                  <button class="btn btn-secondary" style="flex: 1; padding: 8px;" onclick="Admin.openProductModal(${p.id})">✏️ Edit</button>
+                  ${p.is_active ? `
+                    <button class="btn btn-danger" style="flex: 1; padding: 8px;" onclick="Admin.toggleProductStatus(${p.id})">Disable</button>
+                  ` : `
+                    <button class="btn btn-success" style="flex: 1; padding: 8px;" onclick="Admin.reactivateProduct(${p.id})">Enable</button>
+                  `}
+                </div>
+              </div>
+            `).join('')}
           </div>
         </div>
       `;
-    } catch (err) {
-      content.innerHTML = `<div style="color: red; padding: 20px;">Failed to load products: ${err.message}</div>`;
-    }
   },
 
   openProductModal(productId = null) {
@@ -509,50 +544,47 @@ const Admin = {
     }
 
     return `
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Product</th>
-            <th>Category</th>
-            <th>Current Stock</th>
-            <th>Quick Restock (+Qty)</th>
-            <th>Set Exact Stock</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${products.map(p => `
-            <tr>
-              <td>
-                <span style="font-size: 1.2rem;">${p.icon || '🍖'}</span>
-                <strong style="margin-left: 6px;">${p.name}</strong>
-              </td>
-              <td>
-                <span style="background: ${p.category === 'Drinks' || p.category === 'Beverages' ? '#e7f5ff' : '#fff4e6'}; color: ${p.category === 'Drinks' || p.category === 'Beverages' ? '#1971c2' : '#d9480f'}; padding: 3px 8px; border-radius: 4px; font-weight: 700; font-size: 0.8rem;">
-                  ${p.category}
-                </span>
-              </td>
-              <td>
+      <div class="admin-products-grid">
+        ${products.map(p => `
+          <div class="admin-product-card" style="${!p.is_active ? 'opacity: 0.7;' : ''}">
+            <div class="admin-product-card-header">
+              <div class="admin-product-card-title">
+                <span class="admin-product-card-title-icon">${p.icon || '🍖'}</span>
+                <div>
+                  <strong>${p.name}</strong>
+                </div>
+              </div>
+              <span style="background: ${p.category === 'Drinks' || p.category === 'Beverages' ? '#e7f5ff' : '#fff4e6'}; color: ${p.category === 'Drinks' || p.category === 'Beverages' ? '#1971c2' : '#d9480f'}; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700;">
+                ${p.category}
+              </span>
+            </div>
+            
+            <div class="admin-product-card-body">
+              <div class="admin-product-card-stat">
+                <span class="admin-product-card-stat-label">Current Stock</span>
                 <span class="product-stock-badge ${p.stock <= 0 ? 'stock-out' : (p.stock <= p.low_stock_threshold ? 'stock-low' : 'stock-ok')}">
                   ${p.stock} units
                 </span>
-              </td>
-              <td>
+              </div>
+              <div class="admin-product-card-stat" style="grid-column: span 2;">
+                <span class="admin-product-card-stat-label" style="margin-bottom: 6px;">Quick Restock (+Qty)</span>
                 <div style="display: flex; gap: 6px;">
-                  <button class="btn btn-secondary" style="padding: 6px 12px; font-weight: bold;" onclick="Admin.quickAddStock(${p.id}, 5)">+5</button>
-                  <button class="btn btn-secondary" style="padding: 6px 12px; font-weight: bold;" onclick="Admin.quickAddStock(${p.id}, 10)">+10</button>
-                  <button class="btn btn-secondary" style="padding: 6px 12px; font-weight: bold;" onclick="Admin.quickAddStock(${p.id}, 25)">+25</button>
+                  <button class="btn btn-secondary" style="flex:1; padding: 6px; font-weight: bold;" onclick="Admin.quickAddStock(${p.id}, 5)">+5</button>
+                  <button class="btn btn-secondary" style="flex:1; padding: 6px; font-weight: bold;" onclick="Admin.quickAddStock(${p.id}, 10)">+10</button>
+                  <button class="btn btn-secondary" style="flex:1; padding: 6px; font-weight: bold;" onclick="Admin.quickAddStock(${p.id}, 25)">+25</button>
                 </div>
-              </td>
-              <td>
-                <div style="display: flex; gap: 6px; align-items: center;">
-                  <input type="number" min="0" value="${p.stock}" id="exact-stock-${p.id}" style="width: 70px; padding: 6px 8px; border: 1px solid #ced4da; border-radius: 4px;" />
-                  <button class="btn btn-primary" style="padding: 6px 12px; font-size: 0.85rem;" onclick="Admin.saveExactStock(${p.id})">Save</button>
-                </div>
-              </td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
+              </div>
+            </div>
+
+            <div class="admin-product-card-actions">
+               <div style="display: flex; gap: 6px; align-items: center; width: 100%;">
+                 <input type="number" min="0" value="${p.stock}" id="exact-stock-${p.id}" style="flex: 1; min-width: 60px; padding: 6px 8px; border: 1px solid #ced4da; border-radius: 4px;" />
+                 <button class="btn btn-primary" style="padding: 6px 12px; font-size: 0.85rem;" onclick="Admin.saveExactStock(${p.id})">Set Exact</button>
+               </div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
     `;
   },
 
@@ -976,6 +1008,31 @@ const Admin = {
 
             <button type="submit" class="btn btn-primary">Save Settings</button>
           </form>
+        </div>
+
+        <div class="admin-card">
+          <div class="admin-card-title">🎨 Appearance Settings</div>
+          <p style="color: #868e96; font-size: 0.85rem; margin-bottom: 16px;">Customize how the application looks on this device (changes apply immediately).</p>
+          
+          <div style="display: flex; gap: 30px; flex-wrap: wrap;">
+            <div>
+              <label class="form-label">Theme Mode</label>
+              <div style="display: flex; gap: 10px;">
+                <button type="button" class="btn btn-secondary" onclick="App.setTheme('light')" style="padding: 10px 16px; font-weight: bold;">☀️ Light</button>
+                <button type="button" class="btn btn-secondary" onclick="App.setTheme('dark')" style="padding: 10px 16px; font-weight: bold;">🌙 Dark</button>
+              </div>
+            </div>
+            <div>
+              <label class="form-label">Accent Color</label>
+              <div style="display: flex; gap: 10px;">
+                <button type="button" title="BBQ Orange" style="background: #d9480f; border: 2px solid #ced4da; width: 44px; height: 44px; border-radius: 50%; cursor: pointer; transition: transform 0.1s;" onclick="App.setAccent('#d9480f', '#b63806')" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"></button>
+                <button type="button" title="Tomato Red" style="background: #e03131; border: 2px solid #ced4da; width: 44px; height: 44px; border-radius: 50%; cursor: pointer; transition: transform 0.1s;" onclick="App.setAccent('#e03131', '#c92a2a')" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"></button>
+                <button type="button" title="Fresh Green" style="background: #2f9e44; border: 2px solid #ced4da; width: 44px; height: 44px; border-radius: 50%; cursor: pointer; transition: transform 0.1s;" onclick="App.setAccent('#2f9e44', '#2b8a3e')" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"></button>
+                <button type="button" title="Ocean Blue" style="background: #1971c2; border: 2px solid #ced4da; width: 44px; height: 44px; border-radius: 50%; cursor: pointer; transition: transform 0.1s;" onclick="App.setAccent('#1971c2', '#1864ab')" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"></button>
+                <button type="button" title="Grape Purple" style="background: #9c36b5; border: 2px solid #ced4da; width: 44px; height: 44px; border-radius: 50%; cursor: pointer; transition: transform 0.1s;" onclick="App.setAccent('#9c36b5', '#862e9c')" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"></button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="admin-card">

@@ -1,23 +1,75 @@
-﻿import sqlite3 from 'sqlite3';
-import { open, Database } from 'sqlite';
+import { DatabaseSync } from 'node:sqlite';
 import path from 'path';
 
-let dbInstance: Database | null = null;
+export interface DatabaseWrapper {
+  all<T = any>(sql: string, params?: any[] | any): Promise<T[]>;
+  get<T = any>(sql: string, params?: any[] | any): Promise<T | undefined>;
+  run(sql: string, params?: any[] | any): Promise<{ lastID?: number; changes: number }>;
+  exec(sql: string): Promise<void>;
+  close(): Promise<void>;
+}
 
-export async function getDb(): Promise<Database> {
+export type Database = DatabaseWrapper;
+
+let dbInstance: DatabaseWrapper | null = null;
+let rawSyncDb: DatabaseSync | null = null;
+
+function normalizeParams(params?: any[] | any): any[] {
+  if (params === undefined || params === null) return [];
+  if (Array.isArray(params)) return params;
+  return [params];
+}
+
+export async function getDb(): Promise<DatabaseWrapper> {
   if (dbInstance) {
     return dbInstance;
   }
 
   const dbPath = process.env.DB_PATH || path.join(process.cwd(), 'pos.db');
 
-  dbInstance = await open({
-    filename: dbPath,
-    driver: sqlite3.Database
-  });
+  rawSyncDb = new DatabaseSync(dbPath);
 
   // Enable foreign keys
-  await dbInstance.run('PRAGMA foreign_keys = ON');
+  rawSyncDb.exec('PRAGMA foreign_keys = ON');
+
+  dbInstance = {
+    async all<T = any>(sql: string, params?: any[] | any): Promise<T[]> {
+      if (!rawSyncDb) throw new Error('Database not initialized');
+      const stmt = rawSyncDb.prepare(sql);
+      const rows = stmt.all(...normalizeParams(params));
+      return rows as T[];
+    },
+
+    async get<T = any>(sql: string, params?: any[] | any): Promise<T | undefined> {
+      if (!rawSyncDb) throw new Error('Database not initialized');
+      const stmt = rawSyncDb.prepare(sql);
+      const row = stmt.get(...normalizeParams(params));
+      return row as T | undefined;
+    },
+
+    async run(sql: string, params?: any[] | any): Promise<{ lastID?: number; changes: number }> {
+      if (!rawSyncDb) throw new Error('Database not initialized');
+      const stmt = rawSyncDb.prepare(sql);
+      const result = stmt.run(...normalizeParams(params));
+      return {
+        lastID: result.lastInsertRowid !== undefined ? Number(result.lastInsertRowid) : undefined,
+        changes: Number(result.changes || 0),
+      };
+    },
+
+    async exec(sql: string): Promise<void> {
+      if (!rawSyncDb) throw new Error('Database not initialized');
+      rawSyncDb.exec(sql);
+    },
+
+    async close(): Promise<void> {
+      if (rawSyncDb) {
+        rawSyncDb.close();
+        rawSyncDb = null;
+        dbInstance = null;
+      }
+    }
+  };
 
   return dbInstance;
 }

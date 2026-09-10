@@ -1,4 +1,4 @@
-﻿import { Router, Request, Response } from 'express';
+import { Router, Request, Response } from 'express';
 import { getDb } from '../database/db';
 
 const router = Router();
@@ -196,11 +196,12 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/transactions/:id/complete - Mark pending order as completed
+// POST /api/transactions/:id/complete - Mark pending order as completed and paid
 router.post('/:id/complete', async (req: Request, res: Response) => {
   try {
     const db = await getDb();
     const { id } = req.params;
+    const { payment_method, amount_tendered, change_due, note_append } = req.body;
 
     const transaction = await db.get('SELECT * FROM transactions WHERE id = ?', [id]) as any;
     if (!transaction) {
@@ -210,11 +211,25 @@ router.post('/:id/complete', async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: 'Cannot complete a voided transaction' });
     }
 
+    let updatedNote = transaction.cashier_note || '';
+    if (note_append) {
+      updatedNote = updatedNote ? `${updatedNote}${note_append}` : note_append.replace(/^ \| /, '');
+    }
+
+    // Default to existing values if not provided (for backwards compatibility)
+    const newMethod = payment_method || transaction.payment_method;
+    const newTendered = amount_tendered !== undefined ? amount_tendered : transaction.amount_tendered;
+    const newChange = change_due !== undefined ? change_due : transaction.change_due;
+
     await db.run(`
       UPDATE transactions
-      SET status = 'COMPLETED'
+      SET status = 'COMPLETED',
+          payment_method = ?,
+          amount_tendered = ?,
+          change_due = ?,
+          cashier_note = ?
       WHERE id = ?
-    `, [id]);
+    `, [newMethod, newTendered, newChange, updatedNote, id]);
 
     const updated = await db.get('SELECT * FROM transactions WHERE id = ?', [id]) as any;
     const items = await db.all('SELECT * FROM transaction_items WHERE transaction_id = ?', [id]);
@@ -222,7 +237,7 @@ router.post('/:id/complete', async (req: Request, res: Response) => {
 
     res.json({
       success: true,
-      message: 'Order marked as completed',
+      message: 'Order paid and completed',
       transaction: updated
     });
   } catch (err: any) {

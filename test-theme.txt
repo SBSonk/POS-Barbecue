@@ -1,0 +1,11 @@
+[data-theme="dark"] {
+  --bg-app: #121212;
+  --bg-card: #1e1e1e;
+  --text-main: #f8f9fa;
+  --text-muted: #adb5bd;
+  --border-color: #343a40;
+  
+  --success-bg: #112a17;
+  --danger-bg: #3b1111;
+  --warning-bg: #3b300a;
+}

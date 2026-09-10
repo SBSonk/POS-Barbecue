@@ -1,0 +1,6 @@
+{
+  "name": "Smokin' BBQ & Brews POS",
+  "description": "Point-of-sale system for barbecue restaurants and bars with cashier checkout, kitchen pending orders queue, inventory tracking, and sales reporting.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

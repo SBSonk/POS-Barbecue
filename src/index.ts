@@ -1,4 +1,4 @@
-﻿import express from 'express';
+import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { initDatabase, seedInitialProducts } from './database/db';
@@ -11,7 +11,7 @@ import infoRouter from './routes/info';
 import { getLocalIpAddresses } from './utils/network';
 
 const app = express();
-const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+const PORT = (process.env.PORT && process.env.PORT !== '8080') ? parseInt(process.env.PORT, 10) : 3000;
 
 // Middlewares
 app.use(cors());

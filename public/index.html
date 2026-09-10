@@ -1,9 +1,12 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>BBQ & Drinks POS System</title>
+  <title>Smokin' BBQ & Brews POS</title>
+  <meta name="description" content="Point-of-sale system for barbecue restaurants and bars with cashier checkout, kitchen pending orders queue, inventory tracking, and sales reporting.">
+  <meta property="og:title" content="Smokin' BBQ & Brews POS">
+  <meta property="og:description" content="Point-of-sale system for barbecue restaurants and bars with cashier checkout, kitchen pending orders queue, inventory tracking, and sales reporting.">
   <link rel="stylesheet" href="css/styles.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍖</text></svg>">
 </head>
@@ -100,7 +103,7 @@
 
           <div class="cart-footer-actions">
             <button class="checkout-btn" id="checkout-btn" disabled>
-              <span>💳</span> Pay $0.00
+              <span>🕒</span> Send to Kitchen
             </button>
             <button class="cart-continue-btn" id="cart-continue-btn" type="button">
               <span>←</span> Add More Items / Back to Menu
@@ -112,32 +115,34 @@
 
     <!-- 2. PENDING ORDERS INTERFACE (KITCHEN & SERVING QUEUE) -->
     <div class="pending-layout" id="pending-layout" style="display: none;">
-      <div class="pending-header-card">
-        <div>
-          <div class="pending-header-title">🕒 Active Pending Orders</div>
-          <p class="pending-header-sub">Kitchen & bar queue — review incoming orders and mark them complete when served.</p>
+      <div class="pending-container">
+        <div class="pending-header-card">
+          <div>
+            <div class="pending-header-title">🕒 Active Pending Orders</div>
+            <p class="pending-header-sub">Kitchen & bar queue — review incoming orders and mark them complete when served.</p>
+          </div>
+          <div class="pending-header-actions">
+            <span class="pending-count-pill" id="pending-count-pill">0 Pending</span>
+            <button class="btn btn-secondary" id="refresh-pending-btn" type="button">🔄 Refresh</button>
+          </div>
         </div>
-        <div class="pending-header-actions">
-          <span class="pending-count-pill" id="pending-count-pill">0 Pending</span>
-          <button class="btn btn-secondary" id="refresh-pending-btn" type="button">🔄 Refresh</button>
-        </div>
-      </div>
 
-      <!-- Filter Tabs & Search -->
-      <div class="pending-controls">
-        <div class="pending-filter-tabs" id="pending-filter-tabs">
-          <button class="pending-tab-btn active" data-filter="ALL" type="button">All Active</button>
-          <button class="pending-tab-btn" data-filter="FOOD" type="button">🍖 Food Only</button>
-          <button class="pending-tab-btn" data-filter="DRINKS" type="button">🍹 Drinks Only</button>
+        <!-- Filter Tabs & Search -->
+        <div class="pending-controls">
+          <div class="pending-filter-tabs" id="pending-filter-tabs">
+            <button class="pending-tab-btn active" data-filter="ALL" type="button">All Active</button>
+            <button class="pending-tab-btn" data-filter="FOOD" type="button">🍖 Food Only</button>
+            <button class="pending-tab-btn" data-filter="DRINKS" type="button">🍹 Drinks Only</button>
+          </div>
+          <div class="pending-search-container">
+            <input type="text" id="pending-search-input" class="search-input" placeholder="🔍 Search receipt #, note, or item..." autocomplete="off">
+          </div>
         </div>
-        <div class="pending-search-container">
-          <input type="text" id="pending-search-input" class="search-input" placeholder="🔍 Search receipt #, note, or item..." autocomplete="off">
-        </div>
-      </div>
 
-      <!-- Pending Orders Cards Grid -->
-      <div class="pending-orders-grid" id="pending-orders-grid">
-        <!-- Dynamic Pending Order Cards -->
+        <!-- Pending Orders Cards Grid -->
+        <div class="pending-orders-grid" id="pending-orders-grid">
+          <!-- Dynamic Pending Order Cards -->
+        </div>
       </div>
     </div>
 
@@ -174,6 +179,28 @@
   </div>
 
   <!-- MODALS -->
+  
+  <!-- QUEUE ORDER MODAL -->
+  <div class="modal-backdrop hidden" id="queue-modal">
+    <div class="modal-box" style="max-width: 400px;">
+      <div class="modal-header">
+        <div class="modal-title">🕒 Queue Order to Kitchen</div>
+        <button class="modal-close-btn" onclick="document.getElementById('queue-modal').classList.add('hidden')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Table Number / Customer Name (Optional):</label>
+          <input type="text" class="form-input" id="queue-order-note" placeholder="e.g. Table 4, To-Go, John" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="document.getElementById('queue-modal').classList.add('hidden')">Cancel</button>
+        <button class="btn btn-pending-order" id="confirm-queue-btn" type="button" onclick="Cashier.processQueueOrder()">
+          <span>🕒</span> Send to Kitchen
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- A. PAYMENT & CASH REGISTER MODAL -->
   <div class="modal-backdrop hidden" id="payment-modal">
@@ -256,19 +283,11 @@
           </div>
         </div>
 
-        <!-- Optional Order / Table Note -->
-        <div class="form-group" style="margin-top: 14px;">
-          <label class="form-label">Order / Table Note (Optional):</label>
-          <input type="text" class="form-input" id="cashier-order-note" placeholder="e.g. Table 4, To-Go, Extra Sauce" />
-        </div>
       </div>
 
       <div class="modal-footer payment-modal-footer">
         <button class="btn btn-secondary" onclick="document.getElementById('payment-modal').classList.add('hidden')">Cancel</button>
-        <button class="btn btn-pending-order" id="confirm-pending-btn" type="button" onclick="Cashier.processCheckout('PENDING')">
-          <span>🕒</span> Queue as Pending
-        </button>
-        <button class="btn btn-success" id="confirm-payment-btn" type="button" onclick="Cashier.processCheckout('COMPLETED')">
+        <button class="btn btn-success" id="confirm-payment-btn" type="button" onclick="Cashier.processPayment()">
           <span>✅</span> Pay & Complete
         </button>
       </div>
@@ -294,13 +313,11 @@
 
   <!-- C. ADMIN PIN KEYPAD MODAL -->
   <div class="modal-backdrop hidden" id="pin-modal">
-    <div class="modal-box" style="max-width: 360px;">
-      <div class="modal-header">
-        <div class="modal-title">🔒 Enter Admin PIN</div>
-        <button class="modal-close-btn" onclick="Admin.closePinModal()">×</button>
-      </div>
-      <div class="modal-body" style="text-align: center;">
-        <p style="color: #868e96; font-size: 0.9rem;">Default PIN: <strong>1234</strong></p>
+    <div class="modal-box" style="max-width: 340px; border-radius: 24px; padding: 10px;">
+      <div class="modal-body" style="text-align: center; padding-top: 30px;">
+        <div style="font-size: 2.5rem; margin-bottom: 10px;">🔒</div>
+        <h3 style="margin-bottom: 4px; font-size: 1.25rem;">Admin Access</h3>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 24px;">Default PIN: <strong>1234</strong></p>
 
         <!-- PIN Dots Display -->
         <div class="pin-display">
@@ -310,7 +327,7 @@
           <div class="pin-dot"></div>
         </div>
 
-        <div id="pin-error-msg" style="color: #c92a2a; font-size: 0.85rem; font-weight: bold; min-height: 20px; margin-bottom: 10px;"></div>
+        <div id="pin-error-msg" style="color: var(--danger); font-size: 0.85rem; font-weight: bold; min-height: 20px; margin-bottom: 20px;"></div>
 
         <!-- Touch Keypad -->
         <div class="pin-keypad">
@@ -327,9 +344,8 @@
           <button type="button" class="pin-key" data-val="0">0</button>
           <button type="button" class="pin-key key-action" data-val="back">⌫</button>
         </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" onclick="Admin.closePinModal()" style="width: 100%;">Cancel</button>
+
+        <button class="btn btn-secondary" onclick="Admin.closePinModal()" style="width: 100%; border-radius: 20px; margin-top: 24px; font-weight: 600; background: transparent; border: none; font-size: 1rem;">Cancel</button>
       </div>
     </div>
   </div>
