@@ -36,7 +36,8 @@ body {
   font-family: var(--font-main);
   background-color: var(--bg-app);
   color: var(--text-main);
-  height: 100vh;
+  height: 100dvh; /* standard */
+  min-height: 100vh; /* fallback */
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -742,7 +743,13 @@ body {
     display: block;
   }
   .products-grid-scroll {
-    padding-bottom: 60px; /* Space above mobile cart bar */
+    padding-bottom: 120px; /* Space above mobile cart bar and nav */
+  }
+  .pending-layout {
+    padding-bottom: 85px !important;
+  }
+  .admin-layout {
+    padding-bottom: 85px !important;
   }
 }
 
@@ -776,7 +783,7 @@ body {
   border-radius: var(--radius-lg);
   width: 100%;
   max-width: 480px;
-  max-height: 90vh;
+  max-height: 90dvh;
   overflow-y: auto;
   box-shadow: var(--shadow-lg);
   display: flex;
