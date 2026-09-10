@@ -1,4 +1,4 @@
-import { DatabaseSync } from 'node:sqlite';
+import DatabaseSync from 'better-sqlite3';
 import path from 'path';
 
 export interface DatabaseWrapper {
@@ -12,7 +12,7 @@ export interface DatabaseWrapper {
 export type Database = DatabaseWrapper;
 
 let dbInstance: DatabaseWrapper | null = null;
-let rawSyncDb: DatabaseSync | null = null;
+let rawSyncDb: any | null = null;
 
 function normalizeParams(params?: any[] | any): any[] {
   if (params === undefined || params === null) return [];
