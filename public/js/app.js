@@ -97,6 +97,9 @@ const App = {
   },
 
   showCashierView() {
+    const mcb = document.getElementById('mobile-cart-bar');
+    if (mcb) mcb.style.display = '';
+
     document.getElementById('pos-layout').style.display = 'flex';
     document.getElementById('pending-layout').style.display = 'none';
     document.getElementById('admin-layout').style.display = 'none';
@@ -113,6 +116,9 @@ const App = {
   },
 
   showPendingView() {
+    const mcb = document.getElementById('mobile-cart-bar');
+    if (mcb) mcb.style.display = 'none';
+
     Cashier.closeCartDrawer();
     document.getElementById('pos-layout').style.display = 'none';
     document.getElementById('pending-layout').style.display = 'block';
@@ -128,6 +134,9 @@ const App = {
   },
 
   showAdminView() {
+    const mcb = document.getElementById('mobile-cart-bar');
+    if (mcb) mcb.style.display = 'none';
+
     Cashier.closeCartDrawer();
     document.getElementById('pos-layout').style.display = 'none';
     document.getElementById('pending-layout').style.display = 'none';
