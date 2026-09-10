@@ -172,3 +172,5 @@ const API = {
     return res.json();
   }
 };
+
+window.API = API;

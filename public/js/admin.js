@@ -18,13 +18,7 @@ const Admin = {
 
   bindEvents() {
     // PIN keypad buttons
-    const keys = document.querySelectorAll('.pin-key');
-    keys.forEach(k => {
-      k.addEventListener('click', (e) => {
-        const val = e.currentTarget.getAttribute('data-val');
-        this.handlePinKey(val);
-      });
-    });
+    // Keys bound via inline onclick in HTML
 
     // Admin Tabs
     const tabBtns = document.querySelectorAll('.admin-tab-btn');
@@ -54,16 +48,16 @@ const Admin = {
     }
   },
 
-  openPinModal() {
+  openPinModal(target = 'admin') {
+        this.pendingTarget = target;
     if (this.isAuthenticated) {
-      App.showAdminView();
+      if (target === 'admin') App.showAdminView();
       return;
     }
-
     this.pinEntered = '';
     this.updatePinDisplay();
     document.getElementById('pin-error-msg').textContent = '';
-    document.getElementById('pin-modal').classList.remove('hidden');
+        document.getElementById('pin-modal').classList.remove('hidden');
   },
 
   closePinModal() {
@@ -106,8 +100,12 @@ const Admin = {
       if (res.success && res.authorized) {
         this.isAuthenticated = true;
         this.closePinModal();
-        App.showAdminView();
-        App.showToast('Admin access granted', 'success');
+        if (this.pendingTarget === 'admin') {
+          App.showAdminView();
+          App.showToast('Admin access granted', 'success');
+        } else {
+          App.showToast('Access granted', 'success');
+        }
       } else {
         errorEl.textContent = 'Incorrect PIN. Default is 1234';
         this.pinEntered = '';
@@ -1175,3 +1173,5 @@ const Admin = {
     }
   }
 };
+
+window.Admin = Admin;

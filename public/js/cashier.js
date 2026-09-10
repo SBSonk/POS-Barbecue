@@ -677,3 +677,5 @@ const Cashier = {
     modal.classList.remove('hidden');
   }
 };
+
+window.Cashier = Cashier;

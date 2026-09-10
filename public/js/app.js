@@ -1,6 +1,8 @@
 // Main App Orchestrator & View Switcher
 const App = {
   async init() {
+    Admin.init();
+    
     this.loadAppearance();
     this.bindGlobalEvents();
     await this.loadServerInfo();
@@ -8,7 +10,9 @@ const App = {
     if (typeof Pending !== 'undefined') {
       Pending.init();
     }
-    Admin.init();
+    if (!Admin.isAuthenticated) {
+            
+    }
   },
 
   loadAppearance() {
@@ -51,11 +55,11 @@ const App = {
       pendingNavBtn.addEventListener('click', () => this.showPendingView());
     }
 
-    // Switch to Admin View (requires PIN check)
+    // Switch to Admin View
     const adminNavBtn = document.getElementById('nav-admin-btn');
     if (adminNavBtn) {
       adminNavBtn.addEventListener('click', () => {
-        Admin.openPinModal();
+        App.showAdminView();
       });
     }
 
@@ -63,6 +67,7 @@ const App = {
     document.querySelectorAll('.modal-backdrop').forEach(modal => {
       modal.addEventListener('click', (e) => {
         if (e.target === modal) {
+          if (modal.id === 'pin-modal' && (typeof Admin === 'undefined' || !Admin.isAuthenticated)) return;
           modal.classList.add('hidden');
         }
       });
@@ -73,6 +78,7 @@ const App = {
       if (e.key === 'Escape') {
         Cashier.closeCartDrawer();
         document.querySelectorAll('.modal-backdrop').forEach(modal => {
+          if (modal.id === 'pin-modal' && (typeof Admin === 'undefined' || !Admin.isAuthenticated)) return;
           modal.classList.add('hidden');
         });
       }
@@ -177,3 +183,5 @@ const App = {
 document.addEventListener('DOMContentLoaded', () => {
   App.init();
 });
+
+window.App = App;

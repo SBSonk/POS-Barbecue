@@ -246,3 +246,5 @@ const Pending = {
     }
   }
 };
+
+window.Pending = Pending;
